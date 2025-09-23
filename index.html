@@ -1,634 +1,205 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Línea de tiempo interactiva — Historia de Internet</title>
-<style>
-  :root{
-    /* Paleta suave y tecnológica */
-    --bg: #0b1220;
-    --panel: #0f172a;
-    --panel-2:#111827;
-    --text: #e5e7eb;
-    --muted:#9ca3af;
-    --primary: #60a5fa; /* azul acento */
-    --primary-2:#38bdf8; /* cian acento */
-    --ring:#93c5fd55;
-    --line:#1f2a44;
-    --card:#0b132b;
-    --shadow: 0 10px 30px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.03) inset;
-    --radius: 16px;
-  }
-
-  /* Reset y base */
-  *{box-sizing:border-box}
-  html,body{height:100%}
-  body{
-    margin:0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
-    background: radial-gradient(1200px 800px at 10% -10%, #0f1a2f 0%, var(--bg) 50%, #070b14 100%);
-    color:var(--text);
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
-
-  .wrap{
-    max-width:1200px;
-    margin:clamp(16px, 2vw, 32px) auto;
-    padding:clamp(12px, 2vw, 24px);
-  }
-
-  header.hero{
-    background: linear-gradient(180deg, #0b132b 0%, rgba(11,19,43,.6) 100%);
-    border:1px solid #1e293b;
-    border-radius: calc(var(--radius) + 6px);
-    padding: clamp(16px, 4vw, 32px);
-    box-shadow: var(--shadow);
-    position: relative;
-    overflow:hidden;
-    isolation:isolate;
-  }
-  header.hero::after{
-    content:"";
-    position:absolute; inset:-2px;
-    background:
-      radial-gradient(600px 200px at 80% -10%, #2563eb22 0, transparent 70%),
-      radial-gradient(400px 140px at 10% 110%, #06b6d422 0, transparent 70%);
-    z-index:-1;
-  }
-  .hero h1{
-    margin:0 0 .4rem;
-    font-size: clamp(1.4rem, 1.2rem + 1.6vw, 2.2rem);
-    letter-spacing:.2px;
-  }
-  .hero p{
-    margin:.25rem 0 0;
-    color:var(--muted);
-    max-width:70ch;
-  }
-
-  /* Contenedor de línea de tiempo */
-  .timeline{
-    position:relative;
-    margin-top: clamp(20px, 3vw, 32px);
-    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
-    border:1px solid #1f2937;
-    border-radius: var(--radius);
-    padding: clamp(12px, 2vw, 20px);
-    box-shadow: var(--shadow);
-    overflow:hidden;
-  }
-
-  /* Pista (línea) como SVG adaptable */
-  .track{
-    position:absolute;
-    inset:0;
-    pointer-events:none;
-  }
-
-  /* Lista de eventos */
-  .events{
-    list-style:none;
-    margin:0; padding:0;
-    display:grid;
-    gap: clamp(12px, 2vw, 20px);
-  }
-
-  /* Tarjetas */
-  .event{
-    --e-bg: linear-gradient(180deg, #0e1a31, #0c1527);
-    --e-border: #21314f;
-    position:relative;
-  }
-  .event > button{
-    display:flex;
-    width:100%;
-    gap:12px;
-    align-items:center;
-    text-align:left;
-    background: var(--e-bg);
-    border:1px solid var(--e-border);
-    border-radius: 14px;
-    padding:14px 14px;
-    color:inherit;
-    cursor:pointer;
-    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
-    outline:none;
-  }
-  .event > button:focus-visible{
-    box-shadow: 0 0 0 4px var(--ring);
-    border-color:#60a5fa;
-  }
-  .event > button:hover{
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(2,6,23,.35);
-    border-color:#2a3f66;
-  }
-
-  .icon{
-    flex:0 0 44px;
-    width:44px; height:44px;
-    display:grid; place-items:center;
-    border-radius:12px;
-    background: radial-gradient(80% 80% at 30% 20%, #1b2a4a 0%, #0d162a 100%);
-    border:1px solid #26334d;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
-  }
-  .meta{
-    display:grid;
-    gap:4px;
-  }
-  .year{
-    font-weight:700;
-    letter-spacing:.4px;
-    font-size:.95rem;
-  }
-  .title{
-    font-size:1.05rem;
-  }
-  .kicker{
-    color:var(--muted);
-    font-size:.95rem;
-  }
-
-  /* Indicadores circulares conectados a la pista */
-  .dot{
-    position:absolute;
-    inset-inline-start:-6px;
-    top:50%;
-    width:12px; height:12px;
-    border-radius:50%;
-    transform: translateY(-50%);
-    background: radial-gradient(circle at 30% 30%, #93c5fd, #60a5fa 60%, #1d4ed8 100%);
-    box-shadow: 0 0 0 3px #172554, 0 0 18px #60a5fa88;
-  }
-
-  /* Disposición responsiva */
-  /* Móvil: columna vertical */
-  .timeline[data-layout="vertical"] .events{
-    grid-template-columns: 1fr;
-  }
-  .timeline[data-layout="vertical"] .track svg{
-    width:4px; height:100%;
-  }
-  .timeline[data-layout="vertical"] .dot{
-    inset-inline-start: calc(2px - 6px); /* centrado sobre la línea */
-  }
-  .timeline[data-layout="vertical"] .event > button{
-    padding-inline-start: 56px; /* espacio visual respecto a la línea */
-  }
-
-  /* Escritorio: horizontal elegante y simétrico */
-  @media (min-width: 900px){
-    .timeline[data-layout="horizontal"] .events{
-      grid-template-columns: repeat(7, 1fr);
-      align-items:center;
-      gap: clamp(16px, 2vw, 28px);
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Línea de Tiempo de Internet (1969–2025)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0a0f1f;
+      color: #fff;
+      margin: 0;
+      padding: 0;
     }
-    .timeline[data-layout="horizontal"] .event{
-      height:100%;
-      display:grid;
-      align-content:center;
+    h1 {
+      text-align: center;
+      padding: 20px;
+      font-size: 2rem;
     }
-    .timeline[data-layout="horizontal"] .event > button{
-      flex-direction:column;
-      text-align:center;
-      padding:18px 14px;
-      min-height: 170px;
+    .timeline {
+      display: flex;
+      overflow-x: auto;
+      padding: 20px;
+      gap: 16px;
+      scroll-behavior: smooth;
     }
-    .timeline[data-layout="horizontal"] .kicker{min-height:2.6em}
-    .timeline[data-layout="horizontal"] .dot{
-      top:auto; inset-inline-start:50%;
-      bottom:-12px; transform: translateX(-50%);
+    .event {
+      background: #121a33;
+      padding: 15px;
+      border-radius: 12px;
+      min-width: 160px;
+      cursor: pointer;
+      text-align: center;
+      transition: transform 0.2s;
     }
-    .timeline[data-layout="horizontal"] .track svg{
-      width:100%; height:4px;
+    .event:hover {
+      transform: scale(1.05);
+      background: #1a2444;
     }
-  }
-
-  /* Aparición suave al hacer scroll */
-  .reveal{
-    opacity:0; transform: translateY(8px) scale(.98);
-    transition: opacity .6s ease, transform .6s ease;
-  }
-  .reveal.is-visible{
-    opacity:1; transform: none;
-  }
-
-  @media (prefers-reduced-motion: reduce){
-    .event > button, .reveal{ transition:none !important }
-  }
-
-  /* Modal */
-  .modal{
-    position:fixed; inset:0; display:none;
-    align-items:center; justify-content:center;
-    padding: 20px;
-    background: rgba(2,6,23,.6);
-    z-index: 9999;
-  }
-  .modal[aria-hidden="false"]{ display:flex; }
-  .dialog{
-    width:min(820px, 92vw);
-    background: linear-gradient(180deg, #0b132b 0%, #0a1225 100%);
-    border:1px solid #263248;
-    border-radius: calc(var(--radius) + 4px);
-    box-shadow: var(--shadow);
-    color:var(--text);
-    transform: translateY(10px) scale(.98);
-    opacity:0;
-    transition: transform .25s ease, opacity .25s ease;
-    position:relative;
-    padding: clamp(18px, 3vw, 28px);
-  }
-  .modal[aria-hidden="false"] .dialog{
-    transform:none; opacity:1;
-  }
-  .dialog h2{
-    margin:0 0 6px; font-size: clamp(1.2rem, .9rem + .8vw, 1.6rem);
-  }
-  .dialog .sub{
-    color:var(--muted);
-    margin:0 0 14px;
-  }
-  .dialog .body{
-    line-height:1.6; color:#dbeafe;
-  }
-  .close{
-    position:absolute; top:10px; right:10px;
-    border:1px solid #2b3b5c; background:#0b1220;
-    width:36px; height:36px; border-radius:10px;
-    display:grid; place-items:center;
-    cursor:pointer; color:#9fb7ff;
-  }
-  .close:hover{ filter: brightness(1.1) }
-  .close:focus-visible{ box-shadow: 0 0 0 4px var(--ring) }
-
-  /* Mini-badges en el modal */
-  .badges{ display:flex; gap:8px; flex-wrap:wrap; margin:.4rem 0 1rem }
-  .badge{
-    font-size:.8rem; color:#bfdbfe; background:#0d1b34;
-    border:1px solid #1f3b67; padding:.3rem .55rem; border-radius:999px;
-  }
-
-  /* Footer credit (oculto visualmente para Sites/Moodle si no lo necesitan) */
-  .sr-only{
-    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
-    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
-  }
-</style>
+    .event-year {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #4da6ff;
+    }
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.8);
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .modal-content {
+      background: #1c2339;
+      padding: 20px;
+      border-radius: 12px;
+      max-width: 600px;
+      width: 100%;
+      text-align: center;
+    }
+    .modal h2 {
+      margin: 0 0 10px;
+      color: #4da6ff;
+    }
+    .modal p {
+      margin: 0 0 15px;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+    .modal button {
+      background: #4da6ff;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 8px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .modal button:hover {
+      background: #1e90ff;
+    }
+    /* Responsive */
+    @media (max-width: 768px) {
+      .timeline {
+        flex-direction: column;
+        overflow-y: auto;
+      }
+      .event {
+        min-width: unset;
+        width: 100%;
+      }
+    }
+  </style>
 </head>
 <body>
-  <div class="wrap">
-    <header class="hero reveal" aria-describedby="intro">
-      <h1 title="Historia del Internet — Línea de tiempo interactiva">Historia del Internet: línea de tiempo interactiva</h1>
-      <p id="intro">Explora hitos clave desde ARPANET hasta el iPhone. Haz clic en cada evento para ver detalles en un modal elegante y accesible.</p>
-    </header>
-
-    <!-- TIMELINE -->
-    <section class="timeline reveal" data-layout="vertical" aria-label="Línea de tiempo de la historia del Internet">
-      <!-- Pista SVG (se adapta vertical/horizontal con CSS) -->
-      <svg class="track" aria-hidden="true" focusable="false">
-        <defs>
-          <linearGradient id="grad" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="#1d2a46"/>
-            <stop offset="50%" stop-color="#2a3f66"/>
-            <stop offset="100%" stop-color="#1d2a46"/>
-          </linearGradient>
-        </defs>
-        <!-- Las dimensiones (4px de alto o ancho) las controla el CSS; aquí dibujamos una línea completa -->
-        <rect x="0" y="0" width="100%" height="100%" fill="url(#grad)" rx="2" ry="2"/>
-      </svg>
-
-      <ol class="events" role="list">
-        <!-- 1969: ARPANET -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="1969"
-            data-title="ARPANET"
-            data-tags="Conmutación de paquetes, Origen de Internet"
-            data-desc="Se establece la primera conexión entre computadoras de UCLA y SRI mediante conmutación de paquetes. Considerado el precursor directo de Internet. 💻">
-            <span class="icon" aria-hidden="true">
-              <!-- 💻 Terminal / mainframe -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Computadora</title>
-                <path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-5l1.5 2v1H8.5v-1L10 16H5a2 2 0 0 1-2-2V5z" fill="#1f3b67"/>
-                <rect x="4" y="5" width="16" height="8" rx="1.6" fill="#60a5fa"/>
-                <path d="M6.5 9.5l2-2m0 0l-2-2m2 2h4" stroke="#0b1220" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">1969</span>
-              <span class="title">ARPANET</span>
-              <span class="kicker">Primera conexión UCLA ⇄ SRI</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 1974: TCP/IP -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="1974"
-            data-title="TCP/IP"
-            data-tags="Estándares, Interoperabilidad"
-            data-desc="Vint Cerf y Bob Kahn formulan TCP/IP: el Protocolo de Control de Transmisión y el Protocolo de Internet, base de la comunicación entre redes. 📄">
-            <span class="icon" aria-hidden="true">
-              <!-- 📄 Paquete / capas -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Paquete de red</title>
-                <path d="M12 2l8 4.5v11L12 22l-8-4.5v-11L12 2z" fill="#0e1a31" stroke="#2a3f66"/>
-                <path d="M12 2v20M4 6.5l8 4.5 8-4.5" stroke="#60a5fa" stroke-width="1.2"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">1974</span>
-              <span class="title">TCP/IP</span>
-              <span class="kicker">Lenguaje común entre redes</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 1989: WWW -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="1989"
-            data-title="World Wide Web"
-            data-tags="Hipertexto, CERN"
-            data-desc="Tim Berners-Lee propone la Web para compartir y enlazar información entre científicos del CERN. Nacen URL, HTTP y HTML. 🕸️">
-            <span class="icon" aria-hidden="true">
-              <!-- 🕸️ Red/mundo -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Globo interconectado</title>
-                <circle cx="12" cy="12" r="9" fill="#0e1a31" stroke="#2a3f66"/>
-                <path d="M3 12h18M12 3v18M5 7c2 .8 5 1.2 7 1.2S17 7.8 19 7M5 17c2-.8 5-1.2 7-1.2S17 16.2 19 17" stroke="#60a5fa" stroke-width="1.2"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">1989</span>
-              <span class="title">World Wide Web</span>
-              <span class="kicker">Hipertexto y documentos enlazados</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 1993: Mosaic -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="1993"
-            data-title="Mosaic"
-            data-tags="Navegador, Interfaz gráfica"
-            data-desc="Se lanza Mosaic, el navegador gráfico que popularizó la Web al facilitar imágenes y enlaces con una interfaz amigable. 🖼️">
-            <span class="icon" aria-hidden="true">
-              <!-- 🖼️ Ventana navegador -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Navegador</title>
-                <rect x="3" y="4" width="18" height="14" rx="2.5" fill="#0e1a31" stroke="#2a3f66"/>
-                <rect x="5" y="6" width="14" height="3" rx="1.2" fill="#1b2a4a"/>
-                <circle cx="7" cy="7.5" r="1" fill="#60a5fa"/>
-                <circle cx="10" cy="7.5" r="1" fill="#38bdf8"/>
-                <rect x="6.5" y="10.5" width="11" height="5.5" rx="1.2" fill="#60a5fa"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">1993</span>
-              <span class="title">Mosaic</span>
-              <span class="kicker">La Web se vuelve visual</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 1998: Google -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="1998"
-            data-title="Google"
-            data-tags="PageRank, Búsqueda"
-            data-desc="Larry Page y Sergey Brin fundan Google. Su enfoque en relevancia y PageRank revoluciona la búsqueda en Internet. 🔎">
-            <span class="icon" aria-hidden="true">
-              <!-- 🔎 Lupa -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Búsqueda</title>
-                <circle cx="11" cy="11" r="5.8" fill="#0e1a31" stroke="#2a3f66"/>
-                <circle cx="11" cy="11" r="4" fill="#60a5fa"/>
-                <path d="M15.5 15.5L20 20" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">1998</span>
-              <span class="title">Google</span>
-              <span class="kicker">Nueva era en la búsqueda</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 2004: Web 2.0 -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="2004"
-            data-title="Web 2.0"
-            data-tags="Social, Participación, AJAX"
-            data-desc="Comienza la Web Social. Surgen plataformas como Facebook y Gmail; proliferan blogs, wikis y el contenido generado por usuarios. 👥">
-            <span class="icon" aria-hidden="true">
-              <!-- 👥 Usuarios conectados -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Usuarios</title>
-                <circle cx="9" cy="9" r="3.2" fill="#60a5fa"/>
-                <path d="M3.8 18c.9-2.4 3.1-4 5.7-4s4.8 1.6 5.7 4" fill="none" stroke="#2a3f66"/>
-                <circle cx="16.5" cy="10" r="2.4" fill="#38bdf8"/>
-                <path d="M13.2 18.2c.6-1.6 2-2.8 3.7-3.3" stroke="#2a3f66"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">2004</span>
-              <span class="title">Web 2.0</span>
-              <span class="kicker">Participación y redes sociales</span>
-            </span>
-          </button>
-        </li>
-
-        <!-- 2007: iPhone -->
-        <li class="event reveal">
-          <span class="dot" aria-hidden="true"></span>
-          <button class="event-btn"
-            aria-haspopup="dialog" aria-controls="modal"
-            data-year="2007"
-            data-title="iPhone"
-            data-tags="Móvil, Apps, Multi-touch"
-            data-desc="Apple lanza el iPhone y redefine el acceso móvil a Internet. Acelera el consumo de datos, las apps y el diseño 'mobile-first'. 📱">
-            <span class="icon" aria-hidden="true">
-              <!-- 📱 Smartphone -->
-              <svg width="26" height="26" viewBox="0 0 24 24" role="img">
-                <title>Smartphone</title>
-                <rect x="7" y="3" width="10" height="18" rx="2.4" fill="#0e1a31" stroke="#2a3f66"/>
-                <rect x="8.6" y="5.4" width="6.8" height="12.8" rx="1.2" fill="#60a5fa"/>
-                <circle cx="12" cy="19" r="1" fill="#93c5fd"/>
-              </svg>
-            </span>
-            <span class="meta">
-              <span class="year">2007</span>
-              <span class="title">iPhone</span>
-              <span class="kicker">Internet en el bolsillo</span>
-            </span>
-          </button>
-        </li>
-      </ol>
-    </section>
-
-    <p class="sr-only">Pulsa tab para navegar por los eventos y presiona Enter para abrir detalles. Cierra el modal con Esc o haciendo clic fuera.</p>
-  </div>
-
-  <!-- MODAL accesible -->
-  <div id="modal" class="modal" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="modal-title" aria-describedby="modal-desc">
-    <div class="dialog" role="document">
-      <button class="close" type="button" aria-label="Cerrar (Esc)" title="Cerrar">
-        <!-- X -->
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M6 6l12 12M18 6L6 18" stroke="#9fb7ff" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-      <h2 id="modal-title">Título</h2>
-      <p class="sub" id="modal-desc">Año — resumen</p>
-      <div class="badges" aria-label="Etiquetas"></div>
-      <div class="body"></div>
+  <h1>Historia del Internet: Línea de tiempo (1969–2025)</h1>
+  
+  <div class="timeline" id="timeline"></div>
+  
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h2 id="modal-title"></h2>
+      <p id="modal-desc"></p>
+      <div>
+        <button id="prev-btn">Anterior</button>
+        <button id="next-btn">Siguiente</button>
+        <button id="close-btn">Cerrar</button>
+      </div>
     </div>
   </div>
 
-<script>
-(function(){
-  const timeline = document.querySelector('.timeline');
-  const events = document.querySelectorAll('.event-btn');
-  const modal = document.getElementById('modal');
-  const dialog = modal.querySelector('.dialog');
-  const titleEl = document.getElementById('modal-title');
-  const descEl = document.getElementById('modal-desc');
-  const bodyEl = modal.querySelector('.body');
-  const badgesEl = modal.querySelector('.badges');
-  const closeBtn = modal.querySelector('.close');
+  <script>
+    const events = [
+      {year: "1969", title: "ARPANET", desc: "Primera conexión entre UCLA y SRI; el 29 de octubre se envía el primer mensaje de la red precursora de Internet."},
+      {year: "1971", title: "Nace el e-mail", desc: "Ray Tomlinson envía el primer correo en ARPANET e introduce el uso de @ para separar usuario y máquina."},
+      {year: "1973", title: "Ethernet", desc: "En Xerox PARC, Robert Metcalfe diseña Ethernet, que se convierte en la tecnología LAN dominante."},
+      {year: "1974", title: "TCP (primera especificación)", desc: "Cerf y Kahn publican A Protocol for Packet Network Intercommunication; en diciembre se documenta TCP como RFC 675."},
+      {year: "1983", title: "“Flag Day” TCP/IP", desc: "El 1 de enero, ARPANET migra de NCP a TCP/IP, base de la Internet moderna."},
+      {year: "1983–1984", title: "DNS", desc: "Se definen las bases del Sistema de Nombres de Dominio y se consolidan con RFC 1034/1035."},
+      {year: "1989–1991", title: "World Wide Web", desc: "Tim Berners-Lee propone la WWW (1989) y en 1991 se abre al público el primer sitio en info.cern.ch."},
+      {year: "1993", title: "Mosaic", desc: "El navegador Mosaic populariza la Web gráfica para público general."},
+      {year: "1994–1995", title: "Comercio y la web moderna", desc: "Surgen Amazon (1994/95), eBay (1995) y navegadores comerciales como Netscape."},
+      {year: "1995", title: "Java y JavaScript", desc: "Llegan Java (Sun) y JavaScript (Netscape), claves para aplicaciones y web interactiva."},
+      {year: "1998", title: "ICANN y Google", desc: "Se crea ICANN y se funda Google, revolucionando la búsqueda en Internet."},
+      {year: "2001", title: "Wikipedia", desc: "La enciclopedia colaborativa en línea inicia operaciones (15 de enero)."},
+      {year: "2003", title: "Skype", desc: "El VoIP P2P acerca las llamadas por Internet al gran público."},
+      {year: "2004", title: "Web 2.0", desc: "Despegan plataformas sociales y servicios interactivos (Facebook, Gmail)."},
+      {year: "2005", title: "YouTube", desc: "El video en línea se masifica con YouTube."},
+      {year: "2006", title: "Nube pública", desc: "AWS lanza S3 y EC2, impulsando la computación en la nube."},
+      {year: "2007", title: "Internet móvil", desc: "El iPhone acelera la web móvil y el ecosistema de apps."},
+      {year: "2008", title: "Chrome", desc: "Google lanza Chrome, que impulsa estándares modernos y rendimiento."},
+      {year: "2009", title: "4G LTE", desc: "Se encienden las primeras redes LTE comerciales (TeliaSonera)."},
+      {year: "2012", title: "World IPv6 Launch", desc: "Despliegue permanente de IPv6 por grandes actores de Internet."},
+      {year: "2015", title: "HTTP/2", desc: "Se publica HTTP/2 para mejorar rendimiento (multiplexación, compresión de cabeceras)."},
+      {year: "2016", title: "Let’s Encrypt", desc: "Certificados gratis a escala; acelera la adopción de HTTPS."},
+      {year: "2018", title: "GDPR y TLS 1.3", desc: "Entra en vigor el RGPD en la UE y TLS 1.3 fortalece el cifrado."},
+      {year: "2019", title: "5G", desc: "Comienzan despliegues comerciales de 5G (ejemplo: Corea del Sur)."},
+      {year: "2020", title: "Starlink beta", desc: "Inicia beta pública 'Better Than Nothing', abriendo banda ancha satelital."},
+      {year: "2021", title: "QUIC (RFC 9000)", desc: "IETF estandariza QUIC, transporte cifrado sobre UDP."},
+      {year: "2022", title: "HTTP/3", desc: "Se publica HTTP/3 sobre QUIC, ampliamente soportado."},
+      {year: "2022–2023", title: "Passkeys sin contraseña", desc: "Apple, Google y Microsoft impulsan Passkeys (FIDO). En 2023 Google las hace opción predeterminada."},
+      {year: "2024–2025", title: "Internet global y en expansión", desc: "Servicios satelitales LEO superan decenas de países y millones de usuarios; Starlink reporta 6+ millones en 2025."}
+    ];
 
-  /* Layout: vertical en móvil, horizontal en escritorio (sin romper en iframes) */
-  const setLayout = () => {
-    const horizontal = window.matchMedia('(min-width: 900px)').matches;
-    timeline.dataset.layout = horizontal ? 'horizontal' : 'vertical';
-  };
-  setLayout();
-  window.addEventListener('resize', setLayout, {passive:true});
+    const timeline = document.getElementById('timeline');
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalDesc = document.getElementById('modal-desc');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const closeBtn = document.getElementById('close-btn');
 
-  /* Aparición al hacer scroll */
-  const inView = (el) => {
-    const r = el.getBoundingClientRect();
-    return r.top < (window.innerHeight * 0.88) && r.bottom > 0;
-  };
-  const revealables = document.querySelectorAll('.reveal');
-  const useIO = 'IntersectionObserver' in window;
-  if(useIO){
-    const io = new IntersectionObserver((entries)=>{
-      for(const e of entries){
-        if(e.isIntersecting){ e.target.classList.add('is-visible'); io.unobserve(e.target); }
-      }
-    }, {threshold: .15});
-    revealables.forEach(el=>io.observe(el));
-  }else{
-    const tick=()=>revealables.forEach(el=> inView(el)&&el.classList.add('is-visible'));
-    tick(); window.addEventListener('scroll', tick, {passive:true});
-  }
+    let currentIndex = 0;
 
-  /* Modal: abrir/cerrar con focus-trap básico */
-  let lastTrigger = null;
-
-  function openModal(fromBtn){
-    lastTrigger = fromBtn || null;
-    const year = fromBtn?.dataset.year || '';
-    const title = fromBtn?.dataset.title || '';
-    const desc = fromBtn?.dataset.desc || '';
-    const tags = (fromBtn?.dataset.tags || '').split(',').map(s=>s.trim()).filter(Boolean);
-
-    titleEl.textContent = `${title}`;
-    descEl.textContent = `${year} — ${fromBtn?.querySelector('.kicker')?.textContent || ''}`;
-    bodyEl.textContent = desc;
-
-    badgesEl.innerHTML = '';
-    tags.forEach(t=>{
-      const b = document.createElement('span');
-      b.className = 'badge';
-      b.textContent = t;
-      badgesEl.appendChild(b);
+    // Render eventos
+    events.forEach((event, index) => {
+      const div = document.createElement('div');
+      div.classList.add('event');
+      div.innerHTML = `<div class="event-year">${event.year}</div><div>${event.title}</div>`;
+      div.addEventListener('click', () => openModal(index));
+      timeline.appendChild(div);
     });
 
-    modal.setAttribute('aria-hidden','false');
-    // Enfocar botón de cierre y preparar trampa de foco
-    setTimeout(()=>closeBtn.focus(), 10);
-    document.addEventListener('keydown', onKeydown);
-    document.addEventListener('focus', trapFocus, true);
-  }
-
-  function closeModal(){
-    modal.setAttribute('aria-hidden','true');
-    document.removeEventListener('keydown', onKeydown);
-    document.removeEventListener('focus', trapFocus, true);
-    if(lastTrigger) lastTrigger.focus();
-  }
-
-  function onKeydown(e){
-    if(e.key === 'Escape'){ closeModal(); }
-    if(e.key === 'Tab'){ // focus trap
-      const focusables = dialog.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
-      const list = Array.from(focusables).filter(el=> !el.hasAttribute('disabled') && el.offsetParent !== null);
-      if(list.length === 0) return;
-      const first = list[0], last = list[list.length-1];
-      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
-      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    function openModal(index) {
+      currentIndex = index;
+      modalTitle.textContent = events[index].year + " — " + events[index].title;
+      modalDesc.textContent = events[index].desc;
+      modal.style.display = 'flex';
     }
-  }
 
-  function trapFocus(e){
-    if(modal.getAttribute('aria-hidden') === 'false' && !dialog.contains(e.target)){
-      e.stopPropagation();
-      dialog.focus();
+    function closeModal() {
+      modal.style.display = 'none';
     }
-  }
 
-  // Abrir
-  events.forEach(btn=>{
-    btn.addEventListener('click', ()=>openModal(btn));
-    btn.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter' || e.key === ' '){
-        e.preventDefault(); openModal(btn);
+    function showPrev() {
+      if (currentIndex > 0) openModal(currentIndex - 1);
+    }
+
+    function showNext() {
+      if (currentIndex < events.length - 1) openModal(currentIndex + 1);
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+    prevBtn.addEventListener('click', showPrev);
+    nextBtn.addEventListener('click', showNext);
+
+    window.addEventListener('keydown', (e) => {
+      if (modal.style.display === 'flex') {
+        if (e.key === 'Escape') closeModal();
+        if (e.key === 'ArrowLeft') showPrev();
+        if (e.key === 'ArrowRight') showNext();
       }
     });
-  });
-
-  // Cerrar
-  closeBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', (e)=>{
-    if(e.target === modal){ closeModal(); }
-  });
-
-  // Seguridad: cerrar si el iframe oculta el modal por navegación (no rompe si no existe)
-  window.addEventListener('pagehide', closeModal);
-
-  // Mejora: si se carga con hash ?event=1998, abrir modal correspondiente
-  try{
-    const params = new URLSearchParams(location.search);
-    const ev = params.get('event');
-    if(ev){
-      const target = Array.from(events).find(b=>b.dataset.year === ev);
-      if(target) openModal(target);
-    }
-  }catch{ /* noop */ }
-})();
-</script>
+  </script>
 </body>
 </html>
